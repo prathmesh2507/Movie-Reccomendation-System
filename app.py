@@ -571,6 +571,27 @@ def esc(text) -> str:
     )
 
 
+def render_html(html: str) -> None:
+    """
+    Render a raw HTML fragment via st.markdown safely.
+
+    Streamlit's markdown parser treats <div>/<span>/etc. blocks as
+    CommonMark "HTML block type 6", which terminates at the first blank
+    line. Multi-line triple-quoted f-strings naturally pick up Python's
+    source indentation, and the gaps between concatenated fragments can
+    introduce a whitespace-only "blank" line — once that happens, every
+    line after it (now indented 4+ spaces) gets reinterpreted as an
+    indented Markdown code block and is shown as literal escaped text
+    instead of being rendered.
+
+    To avoid that entirely, this collapses the fragment to a single
+    line with no blank lines and no leading indentation before handing
+    it to st.markdown.
+    """
+    compact = "".join(line.strip() for line in html.strip().splitlines())
+    st.markdown(compact, unsafe_allow_html=True)
+
+
 # ============================================================================
 # UI COMPONENTS
 # ============================================================================
@@ -616,12 +637,12 @@ def render_movie_grid(rows: pd.DataFrame, ranked: bool = False, show_similarity:
     cards = []
     for i, (_, row) in enumerate(rows.iterrows(), start=1):
         cards.append(render_movie_card_html(row, rank=i if ranked else None, show_similarity=show_similarity))
-    st.markdown(f'<div class="movie-grid">{"".join(cards)}</div>', unsafe_allow_html=True)
+    render_html(f'<div class="movie-grid">{"".join(cards)}</div>')
 
 
 def render_movie_details(row: pd.Series) -> None:
     g1, g2 = get_gradient(row["title"])
-    st.markdown(
+    render_html(
         f"""
         <div class="detail-card">
             <div style="display:flex; gap:1.4rem; align-items:flex-start; flex-wrap:wrap;">
@@ -645,8 +666,7 @@ def render_movie_details(row: pd.Series) -> None:
                 </div>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Rating", f"{row.get('vote_average', 0):.1f} / 10")
@@ -657,7 +677,7 @@ def render_movie_details(row: pd.Series) -> None:
 
 def render_recommendation_insight(selected_title: str, total_movies: int, results: pd.DataFrame) -> None:
     top_sim = results["similarity"].max() * 100 if not results.empty and "similarity" in results else 0.0
-    st.markdown(
+    render_html(
         f"""
         <div class="insight-box">
             <div class="insight-row"><span class="k">Selected movie</span><span class="v">{esc(selected_title)}</span></div>
@@ -667,8 +687,7 @@ def render_recommendation_insight(selected_title: str, total_movies: int, result
             <div class="insight-row"><span class="k">Similarity metric</span><span class="v">Cosine similarity</span></div>
             <div class="insight-row"><span class="k">Top similarity</span><span class="v">{top_sim:.1f}%</span></div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -694,8 +713,8 @@ def render_why_this_movie() -> None:
 # ============================================================================
 
 def render_sidebar(df: pd.DataFrame) -> str:
-    st.markdown('<div class="brand-mark">CINEMATCH</div>', unsafe_allow_html=True)
-    st.markdown('<div class="brand-sub">AI-powered movie discovery</div>', unsafe_allow_html=True)
+    render_html('<div class="brand-mark">CINEMATCH</div>')
+    render_html('<div class="brand-sub">AI-powered movie discovery</div>')
 
     page = st.radio(
         "Navigate",
@@ -704,30 +723,29 @@ def render_sidebar(df: pd.DataFrame) -> str:
         key="nav_radio",
     )
 
-    st.markdown('<hr class="side-divider">', unsafe_allow_html=True)
+    render_html('<hr class="side-divider">')
 
-    st.markdown('<div class="side-label">Dataset</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="side-value"><span class="mono">{len(df):,}</span> movies</div>', unsafe_allow_html=True)
+    render_html('<div class="side-label">Dataset</div>')
+    render_html(f'<div class="side-value"><span class="mono">{len(df):,}</span> movies</div>')
 
-    st.markdown('<div class="side-label">Model</div>', unsafe_allow_html=True)
-    st.markdown('<div class="side-value">TF-IDF + Cosine Similarity</div>', unsafe_allow_html=True)
+    render_html('<div class="side-label">Model</div>')
+    render_html('<div class="side-value">TF-IDF + Cosine Similarity</div>')
 
-    st.markdown('<div class="side-label">Search</div>', unsafe_allow_html=True)
-    st.markdown('<div class="side-value">Fuzzy title matching</div>', unsafe_allow_html=True)
+    render_html('<div class="side-label">Search</div>')
+    render_html('<div class="side-value">Fuzzy title matching</div>')
 
     return page
 
 
 def render_home(df: pd.DataFrame) -> None:
-    st.markdown(
+    render_html(
         """
         <div class="hero">
             <div class="hero-eyebrow">🎬 Content-Based Recommender</div>
             <div class="hero-title">Discover Your Next<br>Favorite Movie</div>
             <div class="hero-sub">AI-powered recommendations based on movie content and similarity.</div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
     with st.form("home_search_form"):
@@ -751,7 +769,7 @@ def render_home(df: pd.DataFrame) -> None:
     rated_movies = df[df["vote_count"] >= 50]
     top_movie = rated_movies.sort_values("vote_average", ascending=False).iloc[0] if not rated_movies.empty else df.iloc[0]
 
-    st.markdown(
+    render_html(
         f"""
         <div class="stat-strip">
             <div class="stat-box"><div class="num">{len(df):,}</div><div class="lbl">Movies in Catalog</div></div>
@@ -759,8 +777,7 @@ def render_home(df: pd.DataFrame) -> None:
             <div class="stat-box"><div class="num">{avg_pop:.1f}</div><div class="lbl">Average Popularity</div></div>
             <div class="stat-box accent"><div class="num">{top_movie['vote_average']:.1f}★</div><div class="lbl">Top Rated: {esc(top_movie['title'][:22])}</div></div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
     tabs = st.tabs(["🏆 Top Rated", "🔥 Most Popular", "🆕 Recent Releases"])
@@ -779,12 +796,12 @@ def render_home(df: pd.DataFrame) -> None:
         recent = df.dropna(subset=["release_date_parsed"]).sort_values("release_date_parsed", ascending=False).head(5)
         render_movie_grid(recent)
 
-    st.markdown('<div class="film-divider"></div>', unsafe_allow_html=True)
+    render_html('<div class="film-divider"></div>')
     render_model_explainer()
 
 
 def render_model_explainer() -> None:
-    st.markdown('<div class="section-head"><span class="tag">// how it works</span><h3>How does the recommender work?</h3></div>', unsafe_allow_html=True)
+    render_html('<div class="section-head"><span class="tag">// how it works</span><h3>How does the recommender work?</h3></div>')
     with st.expander("See the recommendation pipeline", expanded=False):
         steps = [
             "Movie Overview", "Text preprocessing", "TF-IDF Vectorization",
@@ -792,9 +809,9 @@ def render_model_explainer() -> None:
             "Top Recommendations",
         ]
         for i, step in enumerate(steps):
-            st.markdown(f'<div class="flow-step">{esc(step)}</div>', unsafe_allow_html=True)
+            render_html(f'<div class="flow-step">{esc(step)}</div>')
             if i < len(steps) - 1:
-                st.markdown('<div class="flow-arrow">↓</div>', unsafe_allow_html=True)
+                render_html('<div class="flow-arrow">↓</div>')
 
         st.markdown("---")
         c1, c2 = st.columns(2)
@@ -823,7 +840,7 @@ def render_model_explainer() -> None:
 
 
 def render_recommend(df: pd.DataFrame, feature_matrix) -> None:
-    st.markdown('<div class="section-head"><span class="tag">// recommend</span><h3>What movie do you like?</h3></div>', unsafe_allow_html=True)
+    render_html('<div class="section-head"><span class="tag">// recommend</span><h3>What movie do you like?</h3></div>')
 
     default_query = st.session_state.pop("pending_query", "")
     query = st.text_input(
@@ -852,7 +869,7 @@ def render_recommend(df: pd.DataFrame, feature_matrix) -> None:
     close_matches = find_movie(query, titles, n=6)
 
     if not close_matches:
-        st.markdown(
+        render_html(
             """
             <div class="not-found-box">
                 <strong>We couldn't find that movie. Try a different title.</strong><br>
@@ -860,8 +877,7 @@ def render_recommend(df: pd.DataFrame, feature_matrix) -> None:
                     Double-check the spelling, or try just the first word or two of the title.
                 </span>
             </div>
-            """,
-            unsafe_allow_html=True,
+            """
         )
         sample = df.sort_values("popularity", ascending=False).head(6)["title"].tolist()
         st.caption("A few popular titles you could try instead:")
@@ -878,7 +894,7 @@ def render_recommend(df: pd.DataFrame, feature_matrix) -> None:
 
     selected_row = df[df["title"] == selected_title].iloc[0]
 
-    st.markdown('<div class="section-head"><span class="tag">// selected</span><h3>Selected Movie</h3></div>', unsafe_allow_html=True)
+    render_html('<div class="section-head"><span class="tag">// selected</span><h3>Selected Movie</h3></div>')
     render_movie_details(selected_row)
 
     results = get_recommendations(
@@ -886,7 +902,7 @@ def render_recommend(df: pd.DataFrame, feature_matrix) -> None:
         top_n=top_n, min_rating=min_rating, period=period, sort_by=sort_by,
     )
 
-    st.markdown('<div class="section-head"><span class="tag">// results</span><h3>Because You Watched…</h3></div>', unsafe_allow_html=True)
+    render_html('<div class="section-head"><span class="tag">// results</span><h3>Because You Watched…</h3></div>')
 
     if results.empty:
         st.warning("No similar movies matched your current filters. Try loosening the rating or period filter.")
@@ -895,12 +911,12 @@ def render_recommend(df: pd.DataFrame, feature_matrix) -> None:
 
     render_why_this_movie()
 
-    st.markdown('<div class="section-head"><span class="tag">// insight</span><h3>Recommendation Insight</h3></div>', unsafe_allow_html=True)
+    render_html('<div class="section-head"><span class="tag">// insight</span><h3>Recommendation Insight</h3></div>')
     render_recommendation_insight(selected_title, len(df), results)
 
 
 def render_analytics(df: pd.DataFrame) -> None:
-    st.markdown('<div class="section-head"><span class="tag">// analytics</span><h3>Dataset Analytics</h3></div>', unsafe_allow_html=True)
+    render_html('<div class="section-head"><span class="tag">// analytics</span><h3>Dataset Analytics</h3></div>')
 
     total = len(df)
     avg_rating = df["vote_average"].mean()
@@ -908,7 +924,7 @@ def render_analytics(df: pd.DataFrame) -> None:
     avg_pop = df["popularity"].mean()
     high_rated_count = (df["vote_average"] >= 8).sum()
 
-    st.markdown(
+    render_html(
         f"""
         <div class="kpi-grid">
             <div class="kpi-card"><div class="kpi-val">{total:,}</div><div class="kpi-lbl">Total Movies</div></div>
@@ -917,8 +933,7 @@ def render_analytics(df: pd.DataFrame) -> None:
             <div class="kpi-card"><div class="kpi-val">{avg_pop:.1f}</div><div class="kpi-lbl">Avg Popularity</div></div>
             <div class="kpi-card"><div class="kpi-val">{high_rated_count:,}</div><div class="kpi-lbl">Movies Rated 8+</div></div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
     plot_template = _plotly_dark_template()
@@ -998,7 +1013,7 @@ def _plotly_dark_template() -> dict:
 
 
 def render_explore(df: pd.DataFrame) -> None:
-    st.markdown('<div class="section-head"><span class="tag">// explore</span><h3>Explore Movies</h3></div>', unsafe_allow_html=True)
+    render_html('<div class="section-head"><span class="tag">// explore</span><h3>Explore Movies</h3></div>')
 
     with st.expander("🎯 View full movie details", expanded=False):
         pick = st.selectbox("Choose a movie", options=df["title"].sort_values().tolist(), index=None, placeholder="Select a movie…")
@@ -1055,7 +1070,7 @@ def render_explore(df: pd.DataFrame) -> None:
 
 
 def render_about(df: pd.DataFrame) -> None:
-    st.markdown('<div class="section-head"><span class="tag">// about</span><h3>About CineMatch</h3></div>', unsafe_allow_html=True)
+    render_html('<div class="section-head"><span class="tag">// about</span><h3>About CineMatch</h3></div>')
 
     st.markdown(
         """
@@ -1066,18 +1081,18 @@ def render_about(df: pd.DataFrame) -> None:
         """
     )
 
-    st.markdown('<div class="section-head"><span class="tag">// architecture</span><h3>System Architecture</h3></div>', unsafe_allow_html=True)
+    render_html('<div class="section-head"><span class="tag">// architecture</span><h3>System Architecture</h3></div>')
     arch_steps = [
         "movies.csv", "Pandas DataFrame", "Overview Text", "TF-IDF Vectorizer",
         "Feature Matrix", "Cosine Similarity (per query)", "Fuzzy Movie Search",
         "Recommendation Ranking", "Streamlit UI",
     ]
     for i, step in enumerate(arch_steps):
-        st.markdown(f'<div class="flow-step">{esc(step)}</div>', unsafe_allow_html=True)
+        render_html(f'<div class="flow-step">{esc(step)}</div>')
         if i < len(arch_steps) - 1:
-            st.markdown('<div class="flow-arrow">↓</div>', unsafe_allow_html=True)
+            render_html('<div class="flow-arrow">↓</div>')
 
-    st.markdown('<div class="section-head"><span class="tag">// honesty</span><h3>Model Limitations</h3></div>', unsafe_allow_html=True)
+    render_html('<div class="section-head"><span class="tag">// honesty</span><h3>Model Limitations</h3></div>')
     st.markdown(
         """
         - TF-IDF depends entirely on the **vocabulary actually present** in each overview.
