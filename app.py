@@ -1135,16 +1135,7 @@ def main() -> None:
     with st.sidebar:
         page = render_sidebar(df)
 
-    if page == "Home":
-        render_home(df)
-    elif page == "Recommend":
-        render_recommend(df, feature_matrix)
-    elif page == "Analytics":
-        render_analytics(df)
-    elif page == "Explore":
-        render_explore(df)
-    elif page == "About":
-        render_about(df)
+    
 
 
 if __name__ == "__main__":
