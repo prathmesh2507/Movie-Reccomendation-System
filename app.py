@@ -1135,6 +1135,8 @@ def main() -> None:
     with st.sidebar:
         page = render_sidebar(df)
 
+    if page == "Home":
+        render_home(df)
     
 
 
