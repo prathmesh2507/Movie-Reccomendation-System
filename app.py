@@ -1137,6 +1137,10 @@ def main() -> None:
 
     if page == "Home":
         render_home(df)
+    elif page == "Recommend":
+        render_recommend(df, feature_matrix)
+    elif page == "Analytics":
+        render_analytics(df)
     
 
 
