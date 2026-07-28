@@ -1141,7 +1141,10 @@ def main() -> None:
         render_recommend(df, feature_matrix)
     elif page == "Analytics":
         render_analytics(df)
-    
+    elif page == "Explore":
+        render_explore(df)
+    elif page == "About":
+        render_about(df)
 
 
 if __name__ == "__main__":
